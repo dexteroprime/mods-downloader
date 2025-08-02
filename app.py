@@ -2,12 +2,43 @@ import os
 import requests
 import tempfile
 import zipfile
-from flask import Flask, request, jsonify, send_file, abort, render_template_string
+from flask import Flask, request, jsonify, send_file, abort, render_template_string, json
 
 app = Flask(__name__)
 
 MODRINTH_API_URL = "https://api.modrinth.com/v2"
 MODS_CACHE_DIR = "downloaded_mods"
+
+
+# Add this list at the top
+CUSTOM_MODS = [
+    {"slug": "3dskinlayers", "name": "3D Skin Layers"},
+    {"slug": "ambientsounds", "name": "Ambient Sounds"},
+    {"slug": "armor-stand-editor", "name": "Armor Stand Editor"},
+    {"slug": "axiom", "name": "Axiom"},
+    {"slug": "bobby", "name": "Bobby"},
+    {"slug": "creativecore", "name": "CreativeCore"},
+    {"slug": "entity-model-features", "name": "Entity Model Features"},
+    {"slug": "entity-texture-features", "name": "Entity Texture Features"},
+    {"slug": "fabric-api", "name": "Fabric API"},
+    {"slug": "flashback", "name": "Flashback"},
+    {"slug": "freecam", "name": "Freecam"},
+    {"slug": "horsestatsvanilla", "name": "Horse Stats Mod"},
+    {"slug": "iris", "name": "Iris"},
+    {"slug": "lambdynamiclights", "name": "LambDynamicLights"},
+    {"slug": "inventory-profiles-next", "name": "Lightweight Inventory Sorting"},
+    {"slug": "litematica", "name": "Litematica"},
+    {"slug": "malilib", "name": "MaLiLib"},
+    {"slug": "modmenu", "name": "Mod Menu"},
+    {"slug": "mouse-tweaks", "name": "Mouse Tweaks"},
+    {"slug": "notenoughanimations", "name": "NotEnoughAnimations"},
+    {"slug": "ok-zoomer", "name": "Ok Zoomer"},
+    {"slug": "simple-voice-chat", "name": "Simple Voice Chat"},
+    {"slug": "sodium", "name": "Sodium"},
+    {"slug": "tweakeroo", "name": "Tweakeroo"},
+    {"slug": "xaeros-world-map", "name": "Xaero's World Map"}
+]
+
 
 if not os.path.exists(MODS_CACHE_DIR):
     os.makedirs(MODS_CACHE_DIR)
@@ -210,14 +241,23 @@ window.onload = fetchMods;
 
 @app.route('/api/mods')
 def api_mods():
-    mods = fetch_fabric_mods(50)
-    return jsonify(mods)
+    mods = fetch_fabric_mods(30)
+    slugs_seen = {mod["slug"] for mod in mods}
+
+    # Merge custom list with trending (avoiding duplicates)
+    merged = mods[:]
+    for custom_mod in CUSTOM_MODS:
+        if custom_mod["slug"] not in slugs_seen:
+            merged.append(custom_mod)
+    return jsonify(merged)
 
 @app.route('/api/download', methods=['POST'])
 def api_download():
     data = request.json
     mc_version = data.get('mc_version')
     mod_slugs = data.get('mods', [])
+
+    unavailable_mods = []
 
     if not mc_version or not mod_slugs:
         abort(400, "Minecraft version and mod list required")
@@ -228,6 +268,7 @@ def api_download():
     for slug in mod_slugs:
         versions = fetch_mod_versions(slug, mc_version)
         if not versions:
+            unavailable_mods.append(slug)
             continue
         latest_ver = versions[0]
         deps_files = resolve_dependencies(latest_ver, mc_version)
@@ -250,9 +291,14 @@ def api_download():
             except Exception as e:
                 print(f"Error downloading {filename}: {e}")
 
+    if unavailable_mods:
+      message = "Some mods could not be downloaded (no release for version {}): {}".format(
+        mc_version, ", ".join(unavailable_mods)
+    )
+    print(message)
+
     # Send the zip back
     return send_file(tmp_zip.name, as_attachment=True, download_name='fabric_mods.zip')
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
