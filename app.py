@@ -93,7 +93,7 @@ def index():
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Fabric Mod Downloader</title>
+<title>Dextero's Mod Downloader</title>
 <style>
   body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 20px;}
   input[type=text] { width: 200px; padding: 5px; }
@@ -104,7 +104,7 @@ def index():
 </style>
 </head>
 <body>
-<h2>Fabric Mod Downloader</h2>
+<h2>Dextero's Mod Downloader</h2>
 
 <label>Minecraft Version: <input type="text" id="mcVersion" placeholder="e.g. 1.19.4" /></label>
 
@@ -253,5 +253,6 @@ def api_download():
     # Send the zip back
     return send_file(tmp_zip.name, as_attachment=True, download_name='fabric_mods.zip')
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
