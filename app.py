@@ -295,7 +295,7 @@ def api_download():
       message = "Some mods could not be downloaded (no release for version {}): {}".format(
         mc_version, ", ".join(unavailable_mods)
     )
-    print(message)
+      print(message)
 
     # Send the zip back
     return send_file(tmp_zip.name, as_attachment=True, download_name='fabric_mods.zip')
